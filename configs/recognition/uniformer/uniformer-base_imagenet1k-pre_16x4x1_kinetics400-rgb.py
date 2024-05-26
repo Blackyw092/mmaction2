@@ -23,8 +23,10 @@ model = dict(
 
 # dataset settings
 dataset_type = 'VideoDataset'
-data_root_val = 'data/k400'
-ann_file_test = 'data/k400/val.csv'
+data_root = 'data/train'
+data_root_val = 'data/val'
+ann_file_train = 'data/train.txt'
+ann_file_val = 'data/val.txt'
 
 test_pipeline = [
     dict(type='DecordInit'),

@@ -367,9 +367,9 @@ class SABlock(BaseModule):
 
 
 class SpeicalPatchEmbed(BaseModule):
-    """Image to Patch Embedding.
+    """Image to Patch Embedding. 将图片转为编码,空间编码
 
-    Add extra temporal downsampling via temporal kernel size of 3.
+    Add extra temporal downsampling via temporal kernel size of 3. 通过时空核的大小进行下采样
 
     Args:
         img_size (int): Number of input size.
@@ -402,6 +402,7 @@ class SpeicalPatchEmbed(BaseModule):
         self.patch_size = patch_size
         self.num_patches = num_patches
         self.norm = nn.LayerNorm(embed_dim)
+        # 默认输入[3,768,[3,16,16],[2,16,16],[1,0,0]]
         self.proj = conv_3xnxn(
             in_chans,
             embed_dim,
@@ -411,7 +412,7 @@ class SpeicalPatchEmbed(BaseModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.proj(x)
         B, _, T, H, W = x.shape
-        x = x.flatten(2).transpose(1, 2)
+        x = x.flatten(2).transpose(1, 2) #B*(THW)*C
         x = self.norm(x)
         x = x.reshape(B, T, H, W, -1).permute(0, 4, 1, 2, 3).contiguous()
         return x
@@ -652,7 +653,7 @@ class UniFormer(BaseModule):
             super().init_weights()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.patch_embed1(x)
+        x = self.patch_embed1(x)  # [b,c,t,h,w]=[b,3,t,224,224] -->[b,64*64*3,t,4,4]
         x = self.pos_drop(x)
         for blk in self.blocks1:
             x = blk(x)

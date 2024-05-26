@@ -1,4 +1,4 @@
-_base_ = ['../../_base_/default_runtime.py']
+_base_ = ['D:\Mxd\mmaction\mmaction2\configs\_base_\default_runtime.py']
 
 # model settings
 num_frames = 8
@@ -39,51 +39,29 @@ model = dict(
         format_shape='NCTHW'))
 
 # dataset settings
-dataset_type = 'VideoDataset'
-data_root = 'data/train'
-data_root_val = 'data/val'
-ann_file_train = 'data/train.txt'
-ann_file_val = 'data/val.txt'
+dataset_type = 'Video_Sk_Dataset'
+data_root = 'data'
+data_root_val = 'data'
+ann_file_train = 'D:\Mxd\mmaction\mmaction2\hmdb51-mix\\train_frame.txt'
+ann_file_val = 'D:\Mxd\mmaction\mmaction2\hmdb51-mix\\val_frame.txt'
 
-file_client_args = dict(io_backend='disk')
 train_pipeline = [
-    dict(type='DecordInit', **file_client_args),
-    dict(type='UniformSample', clip_len=num_frames, num_clips=1),
-    dict(type='DecordDecode'),
-    dict(type='Resize', scale=(-1, 256)),
-    dict(
-        type='PytorchVideoWrapper',
-        op='RandAugment',
-        magnitude=7,
-        num_layers=4),
-    dict(type='RandomResizedCrop'),
-    dict(type='Resize', scale=(224, 224), keep_ratio=False),
-    dict(type='Flip', flip_ratio=0.5),
-    dict(type='FormatShape', input_format='NCTHW'),
+    dict(type='Video_Sk_SampleFrames', clip_len=1, num_clips=num_frames),
+    dict(type='Video_Sk_RawFrameDecode'),
+    dict(type='Video_Sk_Resize', scale=(-1, 256)),
+    dict(type='Video_Sk_RandomResizedCrop'),
+    dict(type='Video_Sk_Resize', scale=(224, 224), keep_ratio=False),
+    dict(type='Video_Sk_Flip', flip_ratio=0.5),
+    dict(type='Video_Sk_FormatShape', input_format='NCTHW'),
     dict(type='PackActionInputs')
 ]
 
 val_pipeline = [
-    dict(type='DecordInit', **file_client_args),
-    dict(
-        type='UniformSample', clip_len=num_frames, num_clips=1,
-        test_mode=True),
-    dict(type='DecordDecode'),
-    dict(type='Resize', scale=(-1, 224)),
-    dict(type='CenterCrop', crop_size=224),
-    dict(type='FormatShape', input_format='NCTHW'),
-    dict(type='PackActionInputs')
-]
-
-test_pipeline = [
-    dict(type='DecordInit', **file_client_args),
-    dict(
-        type='UniformSample', clip_len=num_frames, num_clips=4,
-        test_mode=True),
-    dict(type='DecordDecode'),
-    dict(type='Resize', scale=(-1, 224)),
-    dict(type='ThreeCrop', crop_size=224),
-    dict(type='FormatShape', input_format='NCTHW'),
+    dict(type='Video_Sk_SampleFrames', clip_len=num_frames, num_clips=1),
+    dict(type='Video_Sk_RawFrameDecode'),
+    dict(type='Video_Sk_Resize', scale=(-1, 224)),
+    dict(type='Video_Sk_CenterCrop', crop_size=224),
+    dict(type='Video_Sk_FormatShape', input_format='NCTHW'),
     dict(type='PackActionInputs')
 ]
 
@@ -95,7 +73,6 @@ train_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         ann_file=ann_file_train,
-        data_prefix=dict(video=data_root),
         pipeline=train_pipeline))
 val_dataloader = dict(
     batch_size=2,
@@ -105,27 +82,15 @@ val_dataloader = dict(
     dataset=dict(
         type=dataset_type,
         ann_file=ann_file_val,
-        data_prefix=dict(video=data_root_val),
         pipeline=val_pipeline,
-        test_mode=True))
-test_dataloader = dict(
-    batch_size=2,
-    num_workers=8,
-    persistent_workers=True,
-    sampler=dict(type='DefaultSampler', shuffle=False),
-    dataset=dict(
-        type=dataset_type,
-        ann_file=ann_file_val,
-        data_prefix=dict(video=data_root_val),
-        pipeline=test_pipeline,
         test_mode=True))
 
 val_evaluator = dict(type='AccMetric')
-test_evaluator = dict(type='AccMetric')
+
 train_cfg = dict(
     type='EpochBasedTrainLoop', max_epochs=40, val_begin=1, val_interval=1)
 val_cfg = dict(type='ValLoop')
-test_cfg = dict(type='TestLoop')
+
 
 base_lr = 1e-5
 optim_wrapper = dict(

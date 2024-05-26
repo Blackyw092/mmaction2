@@ -12,11 +12,10 @@ model = dict(
 
 # dataset settings
 dataset_type = 'VideoDataset'
-data_root = 'data/kinetics400/videos_train'
-data_root_val = 'data/kinetics400/videos_val'
-ann_file_train = 'data/kinetics400/kinetics400_train_list_videos.txt'
-ann_file_val = 'data/kinetics400/kinetics400_val_list_videos.txt'
-ann_file_test = 'data/kinetics400/kinetics400_val_list_videos.txt'
+data_root = 'data/train'
+data_root_val = 'data/val'
+ann_file_train = 'data/train.txt'
+ann_file_val = 'data/val.txt'
 
 file_client_args = dict(io_backend='disk')
 train_pipeline = [
@@ -44,20 +43,20 @@ val_pipeline = [
     dict(type='FormatShape', input_format='NCTHW'),
     dict(type='PackActionInputs')
 ]
-test_pipeline = [
-    dict(type='DecordInit', **file_client_args),
-    dict(
-        type='SampleFrames',
-        clip_len=32,
-        frame_interval=2,
-        num_clips=4,
-        test_mode=True),
-    dict(type='DecordDecode'),
-    dict(type='Resize', scale=(-1, 224)),
-    dict(type='ThreeCrop', crop_size=224),
-    dict(type='FormatShape', input_format='NCTHW'),
-    dict(type='PackActionInputs')
-]
+# test_pipeline = [
+#     dict(type='DecordInit', **file_client_args),
+#     dict(
+#         type='SampleFrames',
+#         clip_len=32,
+#         frame_interval=2,
+#         num_clips=4,
+#         test_mode=True),
+#     dict(type='DecordDecode'),
+#     dict(type='Resize', scale=(-1, 224)),
+#     dict(type='ThreeCrop', crop_size=224),
+#     dict(type='FormatShape', input_format='NCTHW'),
+#     dict(type='PackActionInputs')
+# ]
 
 train_dataloader = dict(
     batch_size=8,
@@ -80,25 +79,25 @@ val_dataloader = dict(
         data_prefix=dict(video=data_root_val),
         pipeline=val_pipeline,
         test_mode=True))
-test_dataloader = dict(
-    batch_size=1,
-    num_workers=8,
-    persistent_workers=True,
-    sampler=dict(type='DefaultSampler', shuffle=False),
-    dataset=dict(
-        type=dataset_type,
-        ann_file=ann_file_test,
-        data_prefix=dict(video=data_root_val),
-        pipeline=test_pipeline,
-        test_mode=True))
+# test_dataloader = dict(
+#     batch_size=1,
+#     num_workers=8,
+#     persistent_workers=True,
+#     sampler=dict(type='DefaultSampler', shuffle=False),
+#     dataset=dict(
+#         type=dataset_type,
+#         ann_file=ann_file_test,
+#         data_prefix=dict(video=data_root_val),
+#         pipeline=test_pipeline,
+#         test_mode=True))
 
 val_evaluator = dict(type='AccMetric')
-test_evaluator = val_evaluator
+# test_evaluator = val_evaluator
 
 train_cfg = dict(
-    type='EpochBasedTrainLoop', max_epochs=30, val_begin=1, val_interval=3)
+    type='EpochBasedTrainLoop', max_epochs=40, val_begin=1, val_interval=1)
 val_cfg = dict(type='ValLoop')
-test_cfg = dict(type='TestLoop')
+# test_cfg = dict(type='TestLoop')
 
 optim_wrapper = dict(
     type='AmpOptimWrapper',
