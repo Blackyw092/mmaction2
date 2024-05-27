@@ -13,18 +13,12 @@ class ActionDataPreprocessor(BaseDataPreprocessor):
     """Data pre-processor for action recognition tasks.
 
     Args:
-        mean (Sequence[float or int], optional): The pixel mean of channels
-            of images or stacked optical flow. Defaults to None.
-        std (Sequence[float or int], optional): The pixel standard deviation
-            of channels of images or stacked optical flow. Defaults to None.
-        to_rgb (bool): Whether to convert image from BGR to RGB.
-            Defaults to False.
-        to_float32 (bool): Whether to convert data to float32.
-            Defaults to True.
-        blending (dict, optional): Config for batch blending.
-            Defaults to None.
-        format_shape (str): Format shape of input data.
-            Defaults to ``'NCHW'``.
+        mean (Sequence[float or int], 可选): 图像或堆叠光流通道的像素平均值。默认为 None。
+        std (Sequence[float or int], 可选): 图像或堆叠光流通道的像素标准差。默认为 None。
+        to_rgb (bool): 是否将图像从BGR转换为RGB。默认为 False。
+        to_float32 (bool): 是否将数据转换为 float32。默认为 True。
+        blending (dict, 可选): 批处理混合的配置。默认为 None。
+        format_shape (str): 输入数据的格式形状。默认为'NCHW'
     """
 
     def __init__(self,
@@ -71,16 +65,14 @@ class ActionDataPreprocessor(BaseDataPreprocessor):
     def forward(self,
                 data: Union[dict, Tuple[dict]],
                 training: bool = False) -> Union[dict, Tuple[dict]]:
-        """Perform normalization, padding, bgr2rgb conversion and batch
-        augmentation based on ``BaseDataPreprocessor``.
+        """基于 ``BaseDataPreprocessor`` 执行标准化、填充、BGR转RGB及批量增强。
+           参数:
+               data (dict or Tuple[dict]): 从数据加载器采样的数据。
+               training (bool): 是否启用训练时间增强。
 
-        Args:
-            data (dict or Tuple[dict]): data sampled from dataloader.
-            training (bool): Whether to enable training time augmentation.
-
-        Returns:
-            dict or Tuple[dict]: Data in the same format as the model input.
-        """
+           返回:
+               dict or Tuple[dict]: 与模型输入格式相同的数据显示。
+         """
         data = self.cast_data(data)
         if isinstance(data, dict):
             return self.forward_onesample(data, training=training)
@@ -94,15 +86,13 @@ class ActionDataPreprocessor(BaseDataPreprocessor):
             raise TypeError(f'Unsupported data type: {type(data)}!')
 
     def forward_onesample(self, data, training: bool = False) -> dict:
-        """Perform normalization, padding, bgr2rgb conversion and batch
-        augmentation on one data sample.
+        """ 对单个数据样本执行标准化、填充、BGR转RGB及批量增强。
+        参数:
+            data (dict): 从数据加载器采样的数据。
+            training (bool): 是否启用训练时间增强。
 
-        Args:
-            data (dict): data sampled from dataloader.
-            training (bool): Whether to enable training time augmentation.
-
-        Returns:
-            dict: Data in the same format as the model input.
+        返回:
+            dict: 与模型输入格式相同的数据显示。
         """
         inputs, data_samples = data['inputs'], data['data_samples']
         inputs, data_samples = self.preprocess(inputs, data_samples, training)

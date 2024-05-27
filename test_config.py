@@ -1,42 +1,18 @@
 _base_ = ['D:\Mxd\mmaction\mmaction2\configs\_base_\default_runtime.py']
+import wandb
 
 # model settings
 num_frames = 8
 model = dict(
     type='Recognizer3D',
     backbone=dict(
-        type='UniFormerV2',
-        input_resolution=224,
-        patch_size=16,
-        width=768,
-        layers=12,
-        heads=12,
-        t_size=num_frames,
-        dw_reduction=1.5,
-        backbone_drop_path_rate=0.,
-        temporal_downsample=False,
-        no_lmhra=True,
-        double_lmhra=True,
-        return_list=[8, 9, 10, 11],
-        n_layers=4,
-        n_dim=768,
-        n_head=12,
-        mlp_factor=4.,
-        drop_path_rate=0.,
-        mlp_dropout=[0.5, 0.5, 0.5, 0.5],
-        clip_pretrained=True,
-        pretrained='ViT-B/16'),
+        type='clip_MAE2',),
     cls_head=dict(
-        type='UniFormerHead',
-        dropout_ratio=0.5,
-        num_classes=4,
+        type='TimeSformerHead',
+        num_classes=51,
         in_channels=768,
-        average_clips='prob'),
-    data_preprocessor=dict(
-        type='ActionDataPreprocessor',
-        mean=[114.75, 114.75, 114.75],
-        std=[57.375, 57.375, 57.375],
-        format_shape='NCTHW'))
+        average_clips='prob')
+)
 
 # dataset settings
 dataset_type = 'Video_Sk_Dataset'
@@ -52,7 +28,7 @@ train_pipeline = [
     dict(type='Video_Sk_RandomResizedCrop'),
     dict(type='Video_Sk_Resize', scale=(224, 224), keep_ratio=False),
     dict(type='Video_Sk_Flip', flip_ratio=0.5),
-    dict(type='Video_Sk_FormatShape', input_format='NCTHW'),
+    dict(type='Video_Sk_FormatShape', input_format='NTCHW'),
     dict(type='PackActionInputs')
 ]
 
@@ -61,7 +37,7 @@ val_pipeline = [
     dict(type='Video_Sk_RawFrameDecode'),
     dict(type='Video_Sk_Resize', scale=(-1, 224)),
     dict(type='Video_Sk_CenterCrop', crop_size=224),
-    dict(type='Video_Sk_FormatShape', input_format='NCTHW'),
+    dict(type='Video_Sk_FormatShape', input_format='NTCHW'),
     dict(type='PackActionInputs')
 ]
 
@@ -91,6 +67,7 @@ train_cfg = dict(
     type='EpochBasedTrainLoop', max_epochs=40, val_begin=1, val_interval=1)
 val_cfg = dict(type='ValLoop')
 
+visualizer = dict(vis_backends=[dict(type='WandbVisBackend')])
 
 base_lr = 1e-5
 optim_wrapper = dict(

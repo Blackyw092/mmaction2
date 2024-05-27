@@ -573,11 +573,11 @@ class  Video_Sk_Resize(BaseTransform):
             if 'rgb_imgs' in results:
                 results['rgb_imgs'] = self._resize_imgs(results['rgb_imgs'], rgb_new_w,
                                                     rgb_new_h)
-                print(1111)
+                # print(1111)
             if 'sk_imgs' in results:
                 results['sk_imgs'] = self._resize_imgs(results['sk_imgs'], sk_new_w,
                                                     sk_new_h)
-                print(1111)
+                # print(1111)
         else:
             lazyop = results['lazy']
             if lazyop['flip']:
@@ -869,7 +869,7 @@ class  Video_Sk_RandomResizedCrop(Video_Sk_RandomCrop):
                 results['rgb_imgs'] = self._crop_imgs(results['rgb_imgs'], crop_bbox)
             if 'sk_imgs' in results:
                 results['sk_imgs'] = self._crop_imgs(results['sk_imgs'], crop_bbox)
-            print(11111)
+            # print(11111)
 
         else:
             lazyop = results['lazy']
@@ -1124,7 +1124,7 @@ class  Video_Sk_FormatShape(BaseTransform):
         self.input_format = input_format
         self.collapse = collapse
         if self.input_format not in [
-                'NCTHW', 'NCHW', 'NCTHW_Heatmap', 'NPTCHW'
+                'NTCHW', 'NCHW', 'NCTHW_Heatmap', 'NPTCHW'
         ]:
             raise ValueError(
                 f'The input format {self.input_format} is invalid.')
@@ -1147,7 +1147,7 @@ class  Video_Sk_FormatShape(BaseTransform):
         if self.collapse:
             assert results['num_clips'] == 1
 
-        if self.input_format == 'NCTHW':
+        if self.input_format == 'NTCHW':
             if 'imgs' in results:
                 imgs = results['imgs']
                 num_clips = results['num_clips']
@@ -1155,11 +1155,11 @@ class  Video_Sk_FormatShape(BaseTransform):
                 if isinstance(clip_len, dict):
                     clip_len = clip_len['RGB']
 
-                imgs = imgs.reshape((-1, num_clips, clip_len) + imgs.shape[1:])
-                # N_crops x N_clips x T x H x W x C
-                imgs = np.transpose(imgs, (0, 1, 5, 2, 3, 4))
+                imgs = imgs[np.newaxis, :]
+                # print(11111)
+                # N x T x H x W x C
+                imgs = np.transpose(imgs, (0, 1, 4, 2,3))
                 # N_crops x N_clips x C x T x H x W
-                imgs = imgs.reshape((-1, ) + imgs.shape[2:])
                 # M' x C x T x H x W
                 # M' = N_crops x N_clips
                 results['imgs'] = imgs

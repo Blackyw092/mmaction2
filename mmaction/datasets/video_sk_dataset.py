@@ -40,7 +40,7 @@ class Video_Sk_Dataset(BaseActionDataset):
                  with_offset: bool = False,
                  multi_class: bool = False,
                  num_classes: Optional[int] = None,
-                 start_index: int = 1,
+                 start_index: int = 0,
                  modality: str = 'RGB',
                  test_mode: bool = False,
                  **kwargs) -> None:
