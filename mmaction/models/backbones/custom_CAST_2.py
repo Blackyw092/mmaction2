@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.models.layers import drop_path, to_2tuple, trunc_normal_
-from timm.models.registry import register_model
 from collections import OrderedDict
 from einops import rearrange
 import random
@@ -314,6 +313,10 @@ class Block(nn.Module):
         ############################ AIM MHSA ###########################
         self.clip_ln_1 = LayerNorm(dim)
         self.clip_attn = nn.MultiheadAttention(dim, num_heads)
+
+        self.clip_ln_t = LayerNorm(dim)
+        self.clip_t_attn = nn.MultiheadAttention(dim, num_heads)
+
         self.S_Adapter = Adapter(dim)
         ##################################################################
 
@@ -363,12 +366,22 @@ class Block(nn.Module):
         self.attn_mask = self.attn_mask.to(dtype=x.dtype, device=x.device) if self.attn_mask is not None else None
         return self.clip_attn(x, x, x, need_weights=False, attn_mask=self.attn_mask)[0]
 
+    def t_attention(self, x: torch.Tensor):
+        self.attn_mask = self.attn_mask.to(dtype=x.dtype, device=x.device) if self.attn_mask is not None else None
+        return self.clip_t_attn(x, x, x, need_weights=False, attn_mask=self.attn_mask)[0]
+
+
     def forward(self,rgb_x, sk_x):
         B = sk_x.shape[0]
         n, bt, _ = rgb_x.shape
         num_frames = bt // B
 
         ############################ MHSA Forward #############################
+        rgb_x_t = rearrange(rgb_x, 'n (b t) d -> t (b n) d', t=num_frames)
+        rgb_x_t = self.attention(self.clip_ln_t(rgb_x_t))
+        # AIM Temp MHSA
+        rgb_x_t = rearrange(rgb_x_t, 't (b n) d -> n (b t) d', n=n)
+        rgb_x = rgb_x + rgb_x_t
         # AIM Space MHSA
         rgb_x = rgb_x + self.attention(self.clip_ln_1(rgb_x))
 
@@ -552,7 +565,6 @@ class STCrossTransformer(nn.Module):
 
         ######################## PRE  --VMAE2 spatial path #########################
         sk_x = self.patch_embed(x)
-
         if self.pos_embed is not None:
             sk_x = sk_x + self.pos_embed.expand(B, -1, -1).type_as(sk_x).to(sk_x.device).clone().detach()
         sk_x = self.pos_drop(sk_x)
@@ -687,10 +699,10 @@ class STCrossTransformer(nn.Module):
 
         # 清理与目标模型不兼容的权重
         state_dict = self.state_dict()
-        for k in ['head.weight', 'head.bias']:
-            if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
-                print(f"Removing key {k} from pretrained checkpoint")
-                del checkpoint_model[k]
+        # for k in ['head.weight', 'head.bias']:
+        #     if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
+        #         print(f"Removing key {k} from pretrained checkpoint")
+        #         del checkpoint_model[k]
 
         # 重命名和调整检查点键，以适应模型结构
         all_keys = list(checkpoint_model.keys())
@@ -711,6 +723,12 @@ class STCrossTransformer(nn.Module):
             if key.startswith('transformer.'):
                 if key[23] == '.':
                     new_dict['blocks.' + key[22] + '.clip_' + key[24:]] = checkpoint_clip[key]
+                    keys = key[24:28]
+                    if key[24:28] == "ln_1":
+                        new_dict['blocks.' + key[22] + '.clip_' + "ln_t" + key[28:] ] = checkpoint_clip[key]
+                    elif key[24:28] == "attn":
+                        new_dict['blocks.' + key[22] + '.clip_' + "t_attn" + key[28:]] = checkpoint_clip[key]
+
                 else:  # layer10 ~ 11 process
                     new_dict['blocks.' + key[22:24] + '.clip_' + key[25:]] = checkpoint_clip[key]
             else:
