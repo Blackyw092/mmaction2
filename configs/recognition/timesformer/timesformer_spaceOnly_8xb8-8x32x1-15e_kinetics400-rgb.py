@@ -18,7 +18,7 @@ model = dict(
         norm_cfg=dict(type='LN', eps=1e-6)),
     cls_head=dict(
         type='TimeSformerHead',
-        num_classes=400,
+        num_classes=4,
         in_channels=768,
         average_clips='prob'),
     data_preprocessor=dict(
@@ -76,7 +76,7 @@ test_pipeline = [
     dict(type='PackActionInputs')
 ]
 train_dataloader = dict(
-    batch_size=8,
+    batch_size=2,
     num_workers=8,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
@@ -86,7 +86,7 @@ train_dataloader = dict(
         data_prefix=dict(video=data_root),
         pipeline=train_pipeline))
 val_dataloader = dict(
-    batch_size=8,
+    batch_size=2,
     num_workers=8,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=False),
@@ -131,16 +131,16 @@ param_scheduler = [
     dict(
         type='MultiStepLR',
         begin=0,
-        end=15,
+        end=40,
         by_epoch=True,
         milestones=[5, 10],
         gamma=0.1)
 ]
 
-default_hooks = dict(checkpoint=dict(interval=5))
+default_hooks = dict(checkpoint=dict(interval=2))
 
 # Default setting for scaling LR automatically
 #   - `enable` means enable scaling LR automatically
 #       or not by default.
 #   - `base_batch_size` = (8 GPUs) x (8 samples per GPU).
-auto_scale_lr = dict(enable=False, base_batch_size=64)
+# auto_scale_lr = dict(enable=False, base_batch_size=64)

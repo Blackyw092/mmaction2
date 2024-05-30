@@ -2,7 +2,7 @@
 
 set -e
 
-DATA_DIR="../../../data/hmdb51/"
+DATA_DIR="mmaction2/tools/data/hmdb51/"
 
 if [[ ! -d "${DATA_DIR}" ]]; then
   echo "${DATA_DIR} does not exist. Creating";

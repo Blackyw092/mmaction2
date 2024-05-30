@@ -10,6 +10,31 @@ from multiprocessing import Lock, Pool
 import mmcv
 import numpy as np
 
+def dump_frames(vid_path):
+    import cv2
+    video = cv2.VideoCapture(f'D:\Mxd\mmaction\mmaction2\hmdb51\\video\\{vid_path}')
+    # print(f'hmdb51/videos/{vid_path}')
+    vid_name = vid_path.split('.')[0]
+    out_full_path = os.path.join( 'D:\Mxd\mmaction\mmaction2\hmdb51\\rawframes\\', vid_name)
+    # print(vid_name)
+    fcount = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    try:
+        os.mkdir(out_full_path)
+    except OSError:
+        print("pass")
+        pass
+    file_list = []
+    for i in range(fcount):
+        ret, frame = video.read()
+        if ret :
+            cv2.imwrite('{}/{:06d}.jpg'.format(out_full_path, i), frame)
+            access_path = '{}/{:06d}.jpg'.format(vid_name, i)
+            file_list.append(access_path)
+        else:
+            print('{} error'.format(vid_name))
+    # print('{} done'.format(vid_name))
+    sys.stdout.flush()
+    return file_list
 
 def extract_frame(vid_item):
     """Generate optical flow using dense flow.
@@ -21,21 +46,23 @@ def extract_frame(vid_item):
     Returns:
         bool: Whether generate optical flow successfully.
     """
-    full_path, vid_path, vid_id, method, task, report_file = vid_item
+    full_path, vid_path, vid_id, method, task, report_file,out_dir= vid_item
     if '/' in vid_path:
         act_name = osp.basename(osp.dirname(vid_path))
         out_full_path = osp.join(args.out_dir, act_name)
     else:
-        out_full_path = args.out_dir
+        out_full_path = 'hmdb51/rawframes/'
+        # print(out_full_path)
 
     run_success = -1
 
     if task == 'rgb':
-        if args.use_opencv:
+        if False: #不用opencv
             # Not like using denseflow,
             # Use OpenCV will not make a sub directory with the video name
             try:
                 video_name = osp.splitext(osp.basename(vid_path))[0]
+                print(video_name)
                 out_full_path = osp.join(out_full_path, video_name)
 
                 vr = mmcv.VideoReader(full_path)
@@ -70,10 +97,10 @@ def extract_frame(vid_item):
             except Exception:
                 run_success = -1
         else:
-            if args.new_short == 0:
+            if 0 == 0:
                 cmd = osp.join(
                     f"denseflow '{full_path}' -b=20 -s=0 -o='{out_full_path}'"
-                    f' -nw={args.new_width} -nh={args.new_height} -v')
+                    f' -nw={224} -nh={224} -v')
             else:
                 cmd = osp.join(
                     f"denseflow '{full_path}' -b=20 -s=0 -o='{out_full_path}'"
@@ -217,7 +244,9 @@ def init(lock_):
 
 
 if __name__ == '__main__':
+    # global args
     args = parse_args()
+    print(args)
 
     if not osp.isdir(args.out_dir):
         print(f'Creating folder: {args.out_dir}')
@@ -268,11 +297,15 @@ if __name__ == '__main__':
 
     lock = Lock()
     pool = Pool(args.num_worker, initializer=init, initargs=(lock, ))
+    # print(vid_list)
     pool.map(
-        extract_frame,
-        zip(fullpath_list, vid_list, range(len(vid_list)),
-            len(vid_list) * [args.flow_type],
-            len(vid_list) * [args.task],
-            len(vid_list) * [args.report_file]))
+        dump_frames,vid_list
+    )
+    # pool.map(
+    #     extract_frame,
+    #     zip(fullpath_list, vid_list, range(len(vid_list)),
+    #         len(vid_list) * [args.flow_type],
+    #         len(vid_list) * [args.task],
+    #         len(vid_list) * [args.report_file],args.out_dir))
     pool.close()
     pool.join()

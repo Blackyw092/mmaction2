@@ -8,6 +8,7 @@ from mmengine.runner import Runner
 
 from mmaction.registry import RUNNERS
 
+import multiprocessing
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a action recognizer')
@@ -119,6 +120,7 @@ def merge_args(cfg, args):
 
 
 def main():
+
     args = parse_args()
 
     cfg = Config.fromfile(args.config)
@@ -140,4 +142,5 @@ def main():
 
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     main()

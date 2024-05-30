@@ -14,10 +14,10 @@ from mmaction.registry import MODELS
 
 logger = MMLogger.get_current_instance()
 
-MODEL_PATH = 'https://download.openmmlab.com/mmaction/v1.0/recognition'
+MODEL_PATH = 'D:\Mxd\mmaction\mmaction2\\'
 _MODELS = {
     'ViT-B/16':
-    os.path.join(MODEL_PATH, 'uniformerv2/clipVisualEncoder',
+    os.path.join(MODEL_PATH, '',
                  'vit-base-p16-res224_clip-rgb_20221219-b8a5da86.pth'),
     'ViT-L/14':
     os.path.join(MODEL_PATH, 'uniformerv2/clipVisualEncoder',
@@ -539,7 +539,9 @@ class UniFormerV2(BaseModule):
         return weight_3d
 
     def _load_pretrained(self, pretrained: str = None) -> None:
-        """Load CLIP pretrained visual encoder.
+
+
+        """Load CLIP pretrained visual encoder. 加载yu
 
         The visual encoder is extracted from CLIP.
         https://github.com/openai/CLIP

@@ -24,6 +24,7 @@ from .uniformer import UniFormer
 from .uniformerv2 import UniFormerV2
 from .vit_mae import VisionTransformer
 from .x3d import X3D
+from .custom_clip_MAE2 import clip_MAE2
 
 __all__ = [
     'AAGCN', 'C2D', 'C3D', 'MViT', 'MobileNetV2', 'MobileNetV2TSM',
@@ -31,7 +32,7 @@ __all__ = [
     'ResNet3dLayer', 'ResNet3dSlowFast', 'ResNet3dSlowOnly', 'ResNetAudio',
     'ResNetTIN', 'ResNetTSM', 'STGCN', 'SwinTransformer3D', 'TANet',
     'TimeSformer', 'UniFormer', 'UniFormerV2', 'VisionTransformer', 'X3D',
-    'RGBPoseConv3D'
+    'RGBPoseConv3D','clip_MAE2'
 ]
 
 try:
