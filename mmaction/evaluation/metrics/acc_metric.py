@@ -75,7 +75,7 @@ class AccMetric(BaseMetric):
         data_samples = copy.deepcopy(data_samples)
         for data_sample in data_samples:
             result = dict()
-            pred = data_sample['pred_score']
+            pred = data_sample['pred_score'][0]
             label = data_sample['gt_label']
 
             # Ad-hoc for RGBPoseConv3D

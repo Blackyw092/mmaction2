@@ -74,6 +74,7 @@ class ActionDataPreprocessor(BaseDataPreprocessor):
                dict or Tuple[dict]: 与模型输入格式相同的数据显示。
          """
         data = self.cast_data(data)
+
         if isinstance(data, dict):
             return self.forward_onesample(data, training=training)
         elif isinstance(data, (tuple, list)):
@@ -95,6 +96,7 @@ class ActionDataPreprocessor(BaseDataPreprocessor):
             dict: 与模型输入格式相同的数据显示。
         """
         inputs, data_samples = data['inputs'], data['data_samples']
+
         inputs, data_samples = self.preprocess(inputs, data_samples, training)
         data['inputs'] = inputs
         data['data_samples'] = data_samples

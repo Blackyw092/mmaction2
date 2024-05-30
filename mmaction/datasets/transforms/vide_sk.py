@@ -1200,6 +1200,7 @@ class  Video_Sk_FormatShape(BaseTransform):
         elif self.input_format == 'NCHW':
             imgs = results['imgs']
             imgs = np.transpose(imgs, (0, 3, 1, 2))
+            imgs = imgs[np.newaxis, :]
             if 'modality' in results and results['modality'] == 'Flow':
                 clip_len = results['clip_len']
                 imgs = imgs.reshape((-1, clip_len * imgs.shape[1]) +
