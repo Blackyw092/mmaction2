@@ -7,15 +7,19 @@ from tempfile import TemporaryDirectory
 
 import mmengine
 import numpy as np
+from PIL import Image
+import cv2
+from pathlib import Path
+import os
 
 from mmaction.apis import detection_inference, pose_inference
 from mmaction.utils import frame_extract
 
 args = abc.abstractproperty()
-args.det_config = 'demo/demo_configs/faster-rcnn_r50-caffe_fpn_ms-1x_coco-person.py'  # noqa: E501
+args.det_config = 'D:\mmaction\mmaction2\demo\demo_configs\\faster-rcnn_r50-caffe_fpn_ms-1x_coco-person.py'  # noqa: E501
 args.det_checkpoint = 'https://download.openmmlab.com/mmdetection/v2.0/faster_rcnn/faster_rcnn_r50_fpn_1x_coco-person/faster_rcnn_r50_fpn_1x_coco-person_20201216_175929-d022e227.pth'  # noqa: E501
 args.det_score_thr = 0.5
-args.pose_config = 'demo/demo_configs/td-hm_hrnet-w32_8xb64-210e_coco-256x192_infer.py'  # noqa: E501
+args.pose_config = 'D:\mmaction\mmaction2\demo/demo_configs/td-hm_hrnet-w32_8xb64-210e_coco-256x192_infer.py'  # noqa: E501
 args.pose_checkpoint = 'https://download.openmmlab.com/mmpose/top_down/hrnet/hrnet_w32_coco_256x192-c78dce93_20200708.pth'  # noqa: E501
 
 
@@ -195,21 +199,45 @@ def bboxes2bbox(bbox, num_frame):
     return ret
 
 
+'''
+您可能唯一需要更改的一件事是：由于ntu_pose_extraction.py是专门为 NTU 视频的姿势提取而开发的，
+-因此在使用此脚本从自定义视频数据集中提取姿势时，您可以跳过ntu_det_postproc步骤。
+'''
 def ntu_det_postproc(vid, det_results):
+    """
+    对NTU视频数据集的检测结果进行后处理。
+
+    参数:
+    vid: 字符串，视频的文件路径或标识符，用于提取视频标签。
+    det_results: 列表，包含视频中检测到的物体框的列表。
+
+    返回值:
+    根据视频的难度和人数，返回优化后的物体框或跟踪轨迹。
+
+    """
+    # 移除检测结果中的重复项
     det_results = [removedup(x) for x in det_results]
+    # 从视频标识符中提取标签号
     label = int(vid.split('/')[-1].split('A')[1][:3])
+    # 定义动作类别，决定是单人还是双人动作
     mpaction = list(range(50, 61)) + list(range(106, 121))
     n_person = 2 if label in mpaction else 1
+    # 判断是否为简单示例
     is_easy, bboxes = is_easy_example(det_results, n_person)
     if is_easy:
+        # 简单示例，直接返回优化后的物体框
         print('\nEasy Example')
         return bboxes
 
+    # 转换检测结果为跟踪轨迹
     tracklets = bbox2tracklet(det_results)
+    # 移除不良的跟踪轨迹
     tracklets = drop_tracklet(tracklets)
 
+    # 打印难例信息，并根据人数处理跟踪轨迹
     print(f'\nHard {n_person}-person Example, found {len(tracklets)} tracklet')
     if n_person == 1:
+        # 单人动作处理逻辑
         if len(tracklets) == 1:
             tracklet = list(tracklets.values())[0]
             det_results = tracklet2bbox(tracklet, len(det_results))
@@ -217,7 +245,7 @@ def ntu_det_postproc(vid, det_results):
         else:
             bad, det_results = tracklets2bbox(tracklets, len(det_results))
             return det_results
-    # n_person is 2
+    # 双人动作处理逻辑
     if len(tracklets) <= 2:
         tracklets = list(tracklets.values())
         bboxes = []
@@ -226,25 +254,46 @@ def ntu_det_postproc(vid, det_results):
         bbox = np.concatenate(bboxes, axis=1)
         return bbox
     else:
+        # 处理多人情况，返回合并后的物体框
         return bboxes2bbox(det_results, len(det_results))
 
 
+
 def pose_inference_with_align(args, frame_paths, det_results):
-    # filter frame without det bbox
+    """
+    使用对齐方式进行姿态推断的函数。
+
+    参数:
+    args: 姿态推断所需的配置参数，包括pose_config（姿态模型配置文件路径},
+          pose_checkpoint（姿态模型的检查点路径），device（运行设备）等。
+    frame_paths: 图像帧的路径列表。
+    det_results: 检测结果列表，每个元素包含一个帧的检测到的人体边界框信息。
+
+    返回:
+    keypoints: 对齐后，每个人体关节点在所有帧中的坐标。
+    scores: 对齐后，每个人体关节点在所有帧中的得分。
+    """
+
+    # 过滤掉没有检测到人体边界框的帧
     det_results = [
         frm_dets for frm_dets in det_results if frm_dets.shape[0] > 0
     ]
 
+    # 进行姿态推断，并获取每个人体关节点的坐标和得分
     pose_results, _ = pose_inference(args.pose_config, args.pose_checkpoint,
                                      frame_paths, det_results, args.device)
-    # align the num_person among frames
+
+    # 计算所有帧中出现的最大人数和每个关节点的数目
     num_persons = max([pose['keypoints'].shape[0] for pose in pose_results])
     num_points = pose_results[0]['keypoints'].shape[1]
     num_frames = len(pose_results)
+
+    # 初始化用于存储对齐后结果的数组
     keypoints = np.zeros((num_persons, num_frames, num_points, 2),
                          dtype=np.float32)
     scores = np.zeros((num_persons, num_frames, num_points), dtype=np.float32)
 
+    # 填充对齐后结果的数组
     for f_idx, frm_pose in enumerate(pose_results):
         frm_num_persons = frm_pose['keypoints'].shape[0]
         for p_idx in range(frm_num_persons):
@@ -254,9 +303,29 @@ def pose_inference_with_align(args, frame_paths, det_results):
     return keypoints, scores
 
 
-def ntu_pose_extraction(vid, skip_postproc=False):
+def ntu_pose_extraction(vid,filename, skip_postproc=False):
+    """
+    从视频中提取人体关节点信息。
+
+    参数:
+    vid: 输入视频的路径。
+    skip_postproc: 是否跳过后处理步骤。默认为False，即执行后处理。
+
+    返回值:
+    anno: 包含关节点信息的字典，包括关节点位置、关节点得分、帧目录、图像尺寸等。
+    """
+    # cap = cv2.VideoCapture(vid)
+    # ret, frame = cap.read()
+    # frame_size = frame.shape[:2]
+    # print(frame_size)
+    # 创建临时目录存储提取的帧
     tmp_dir = TemporaryDirectory()
-    frame_paths, _ = frame_extract(vid, out_dir=tmp_dir.name)
+    frame_paths, _ = frame_extract(vid, out_dir=tmp_dir.name)  # 提取视频帧并获取路径
+    image = Image.open(frame_paths[0])
+    width, height = image.size
+    image.close()
+
+    # 对视频帧进行物体检测
     det_results, _ = detection_inference(
         args.det_config,
         args.det_checkpoint,
@@ -265,30 +334,41 @@ def ntu_pose_extraction(vid, skip_postproc=False):
         device=args.device,
         with_score=True)
 
-    if not skip_postproc:
-        det_results = ntu_det_postproc(vid, det_results)
+    # 如果未跳过后处理，则对检测结果进行后处理
+    # if not skip_postproc:
+    #     det_results = ntu_det_postproc(vid, det_results)  # 对检测结果进行后处理
 
     anno = dict()
 
+
+    # 进行关节点定位，同时进行对齐处理
     keypoints, scores = pose_inference_with_align(args, frame_paths,
                                                   det_results)
+    # 填充关节点信息到anno字典
     anno['keypoint'] = keypoints
     anno['keypoint_score'] = scores
-    anno['frame_dir'] = osp.splitext(osp.basename(vid))[0]
-    anno['img_shape'] = (1080, 1920)
-    anno['original_shape'] = (1080, 1920)
-    anno['total_frames'] = keypoints.shape[1]
-    anno['label'] = int(osp.basename(vid).split('A')[1][:3]) - 1
+    anno['frame_dir'] = osp.splitext(osp.basename(vid))[0]  # 提取视频文件名的基础部分
+    anno['img_shape'] = (1080, 1920)  # 图像的目标尺寸
+    anno['original_shape'] = (height, width)  # 图像的原始尺寸
+    anno['total_frames'] = keypoints.shape[1]  # 总帧数
+    # print(anno)
+    # 从视频文件名中提取标签，并转换为索引
+
+    # print(osp.basename(vid).split('-')[1])
+    anno['label'] = str(filename)
+    # 清理临时目录
     tmp_dir.cleanup()
+    # print(anno)
 
     return anno
+
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Generate Pose Annotation for a single NTURGB-D video')
-    parser.add_argument('video', type=str, help='source video')
-    parser.add_argument('output', type=str, help='output pickle name')
+    # parser.add_argument('video', type=str, help='source video')
+    # parser.add_argument('output', type=str, help='output pickle name')
     parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument('--skip-postproc', action='store_true')
     args = parser.parse_args()
@@ -296,10 +376,27 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    work_dir = 'D:\mmaction\mmaction2\hmdb51'
+    filename_list = [d for d in os.listdir(work_dir) if os.path.isdir(os.path.join(work_dir, d))]
+    type_number = len(filename_list)
     global_args = parse_args()
-    args.device = global_args.device
-    args.video = global_args.video
-    args.output = global_args.output
-    args.skip_postproc = global_args.skip_postproc
-    anno = ntu_pose_extraction(args.video, args.skip_postproc)
-    mmengine.dump(anno, args.output)
+    for process_index in range(type_number):
+        filename = filename_list[process_index]
+        p = Path(work_dir + '/' + filename)
+        # print(p)
+        for files in os.listdir(p):
+            vid_path = Path(work_dir + '/' + filename +'/' + files)
+            pkl_path = Path(work_dir + '/' + filename +'/' + files.split('.')[0]+'.pkl')
+            # print(pkl_path)
+
+                # if file.endswith('.avi'):
+                #     args = dict()
+                #     args.video = dirname + '/' + file
+                #     args.output = dirname + '/' + file.split('.')[0] + '.pkl'
+                #     args.skip_postproc = global_args.skip_postproc
+            args.device = global_args.device
+            args.video = str(vid_path)
+            args.output = str(pkl_path)
+            args.skip_postproc = global_args.skip_postproc
+            anno = ntu_pose_extraction(args.video, filename,args.skip_postproc)
+            mmengine.dump(anno, args.output)
