@@ -446,14 +446,14 @@ def _download(url: str, root: str = os.path.expanduser("~/.cache/clip")):
 
     return download_target
 
-def _transform(n_px):
-    return Compose([
-        Resize(n_px, interpolation=Image.BICUBIC),
-        CenterCrop(n_px),
-        lambda image: image.convert("RGB"),
-        ToTensor(),
-        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-    ])
+# def _transform(n_px):
+#     return Compose([
+#         Resize(n_px, interpolation=Image.BICUBIC),
+#         CenterCrop(n_px),
+#         lambda image: image.convert("RGB"),
+#         ToTensor(),
+#         Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+#     ])
 
 
 def available_models() -> List[str]:

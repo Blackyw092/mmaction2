@@ -73,6 +73,9 @@ class ActionDataPreprocessor(BaseDataPreprocessor):
            返回:
                dict or Tuple[dict]: 与模型输入格式相同的数据显示。
          """
+
+
+
         data = self.cast_data(data)
 
         if isinstance(data, dict):

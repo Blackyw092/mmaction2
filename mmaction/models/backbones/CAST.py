@@ -5,12 +5,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from timm.models.layers import drop_path, to_2tuple, trunc_normal_
-from timm.models.registry import register_model
 from collections import OrderedDict
 from einops import rearrange
 import random
 from mmengine.model import BaseModule, Sequential
+from mmaction.registry import MODELS
 
+
+import torch
+from torchvision import transforms
+from PIL import Image
 def _cfg(url='', **kwargs):
     return {
         'url': url,
@@ -379,9 +383,9 @@ class Block(nn.Module):
         ############################ Cross Forward #############################
         n_s_x = self.ln_s_cross(self.cross_s_down(rgb_x))
         n_t_x = self.ln_t_cross(self.cross_t_down(sk_x))
-        c_s_x = self.cross_s_up(self.act(self.t2s_cross(n_s_x, n_t_x)))
+        # c_s_x = self.cross_s_up(self.act(self.t2s_cross(n_s_x, n_t_x)))
         c_t_x = self.cross_t_up(self.act(self.s2t_cross(n_s_x, n_t_x)))
-        rgb_x = rgb_x + self.drop_path(c_s_x)
+        # rgb_x = rgb_x + self.drop_path(c_s_x)
         sk_x = sk_x + self.drop_path(c_t_x)
         #########################################################################
 
@@ -395,8 +399,8 @@ class Block(nn.Module):
 
         return rgb_x, sk_x
 
-
-class STCrossTransformer(nn.Module):
+@MODELS.register_module()
+class STCrossTransformer(BaseModule):
     """ Vision Transformer with support for patch or hybrid CNN input stage
     """
 
@@ -485,10 +489,8 @@ class STCrossTransformer(nn.Module):
                 nn.init.constant_(m.bias, 0)
                 nn.init.constant_(m.weight, 1.0)
 
-
         if self.clip_mae_pretrained:
             self.load_bidir_weights()
-
         else:
             if self.pretrained:
                 self.init_cfg = dict(
@@ -537,7 +539,7 @@ class STCrossTransformer(nn.Module):
         self.vmae_fc_norm = nn.LayerNorm(self.embed_dim)
 
     def forward_features(self, x):
-        B = x.shape[0]
+        B,T = x.shape[0],x.shape[1]
         rgb_x = x[:, :int(16 / 2), :]
         sk_x = x[:, int(16 / 2):, :]
         ######################## --PRE--  AIM spatial path #########################
@@ -593,11 +595,11 @@ class STCrossTransformer(nn.Module):
         return rgb_x, sk_x
 
     def forward(self, x):
-        print(x)
+
 
         rgb_x ,sk_x = self.forward_features(x)
 
-
+        x = rgb_x*0.7 +0.3*sk_x
 
 
         return x
@@ -687,10 +689,10 @@ class STCrossTransformer(nn.Module):
 
         # 清理与目标模型不兼容的权重
         state_dict = self.state_dict()
-        for k in ['head.weight', 'head.bias']:
-            if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
-                print(f"Removing key {k} from pretrained checkpoint")
-                del checkpoint_model[k]
+        # for k in ['head.weight', 'head.bias']:
+        #     if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
+        #         print(f"Removing key {k} from pretrained checkpoint")
+        #         del checkpoint_model[k]
 
         # 重命名和调整检查点键，以适应模型结构
         all_keys = list(checkpoint_model.keys())

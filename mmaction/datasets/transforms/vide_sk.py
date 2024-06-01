@@ -1141,6 +1141,7 @@ class  Video_Sk_FormatShape(BaseTransform):
         if not isinstance(results['sk_imgs'], np.ndarray):
             results['sk_imgs'] = np.array(results['sk_imgs'])
         imgs = np.concatenate((results['rgb_imgs'], results['sk_imgs']), axis=0)
+
         results['imgs'] =imgs
         # [M x H x W x C]
         # M = 1 * N_crops * N_clips * T

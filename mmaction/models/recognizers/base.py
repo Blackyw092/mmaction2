@@ -11,7 +11,7 @@ from mmaction.registry import MODELS
 from mmaction.utils import (ConfigType, ForwardResults, OptConfigType,
                             OptSampleList, SampleList)
 
-
+from mmengine.logging import MessageHub
 class BaseRecognizer(BaseModel, metaclass=ABCMeta):
     """Base class for recognizers.
 
@@ -201,6 +201,10 @@ class BaseRecognizer(BaseModel, metaclass=ABCMeta):
         feats, predict_kwargs = self.extract_feat(inputs, test_mode=True)
         predictions = self.cls_head.predict(feats, data_samples,
                                             **predict_kwargs)
+
+        loss = self.loss(inputs,data_samples)
+        message_hub = MessageHub.get_current_instance()
+        message_hub.update_scalar('val/loss', loss['loss_cls'])
         return predictions
 
     def _forward(self,

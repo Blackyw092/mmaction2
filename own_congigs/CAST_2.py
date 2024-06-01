@@ -1,4 +1,4 @@
-_base_ = ['D:\Mxd\mmaction\mmaction2\configs\_base_\default_runtime.py']
+_base_ = ['_base_/default_runtime.py']
 import wandb
 
 # model settings
@@ -6,7 +6,7 @@ num_frames = 8
 model = dict(
     type='Recognizer3D',
     backbone=dict(
-        type='clip_MAE2',),
+        type='STCrossTransformer_2',),
     cls_head=dict(
         type='UniFormerHead',
         num_classes=51,
@@ -47,7 +47,7 @@ val_pipeline = [
 ]
 
 train_dataloader = dict(
-    batch_size=8,
+    batch_size=4,
     num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
@@ -56,7 +56,7 @@ train_dataloader = dict(
         ann_file=ann_file_train,
         pipeline=train_pipeline))
 val_dataloader = dict(
-    batch_size=8,
+    batch_size=4,
     num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=False),
@@ -77,14 +77,10 @@ visualizer = dict(vis_backends=[dict(type='WandbVisBackend')])
 base_lr = 5.e-6
 optim_wrapper = dict(
     optimizer=dict(
-        type='AdamW',lr=base_lr, betas=(0.9, 0.98), weight_decay=0.05,eps=1e-8),
-    paramwise_cfg=dict( custom_keys={
-            'backbone.fusion_model': dict(lr_mult=1000),
-            'backbone.A': dict(lr_mult=10),
-            'cls_head': dict(lr_mult=10),
-        }),
-    clip_grad=dict(max_norm=20, norm_type=2)
+        type='AdamW',lr=base_lr, betas=(0.9, 0.98), weight_decay=0.02,eps=1e-8),
 )
+    # clip_grad=dict(max_norm=20, norm_type=2)
+
 
 param_scheduler = [
     dict(
@@ -97,6 +93,7 @@ param_scheduler = [
     dict(
         type='CosineAnnealingLR',
         T_max=50,
+        eta_min_ratio=0.1,
         by_epoch=True,
         begin=5,
         end=50,
@@ -104,7 +101,7 @@ param_scheduler = [
 ]
 
 default_hooks = dict(
-    checkpoint=dict(interval=3, max_keep_ckpts=5), logger=dict(interval=50))
+    checkpoint=dict(interval=3, max_keep_ckpts=5),)
 
 # Default setting for scaling LR automatically
 #   - `enable` means enable scaling LR automatically

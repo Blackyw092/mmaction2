@@ -9,6 +9,7 @@ from collections import OrderedDict
 from einops import rearrange
 import random
 from mmengine.model import BaseModule, Sequential
+from mmaction.registry import MODELS
 
 def _cfg(url='', **kwargs):
     return {
@@ -408,8 +409,8 @@ class Block(nn.Module):
 
         return rgb_x, sk_x
 
-
-class STCrossTransformer(nn.Module):
+@MODELS.register_module()
+class STCrossTransformer_2(BaseModule):
     """ Vision Transformer with support for patch or hybrid CNN input stage
     """
 
